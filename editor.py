@@ -251,6 +251,10 @@ class Editor(QMainWindow):
         if not self.subsections:
             return
 
+        val_count = self.value_list.count()
+        if val_count in [0, 1]:
+            return
+
         filters = "JSON file (*.json)"
         item = self.section_list.currentItem()
         filename = f"{item.text()[:-2]}.json"
@@ -259,7 +263,6 @@ class Editor(QMainWindow):
         if not f[0].replace(" ", ""):
             return
 
-        val_count = self.value_list.count()
         dict_out = {}
         for i in range(val_count):
             val = self.value_list.itemWidget(self.value_list.item(i))
@@ -315,6 +318,9 @@ class Editor(QMainWindow):
             self.section_list.setCurrentIndex(index)
 
         val_count = self.value_list.count()
+        if val_count in [0, 1]:
+            return
+
         for i in range(val_count):
             val = self.value_list.itemWidget(self.value_list.item(i))
             name = getattr(val, "name")
