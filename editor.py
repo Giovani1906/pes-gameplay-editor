@@ -2,7 +2,6 @@ import importlib
 import io
 import json
 import math
-import os
 import struct
 import sys
 
@@ -186,32 +185,37 @@ class Editor(QMainWindow):
 
     def load_bin(self):
         self.section_list.clear()
-        if self.filename.replace(" ", "") != "":
-            with open(self.filename, "rb") as f:
-                self.buffer = io.BytesIO(f.read())
-                sect_offs = []
-                sect_lens = []
-                for i in range(math.ceil(self.head_len / 12) - 1):
-                    sect_len, _, sect_off = struct.unpack("<3i", self.buffer.read(12))
-                    sect_lens.append(sect_len)
-                    sect_offs.append(sect_off)
+        if not self.filename.replace(" ", ""):
+            return
 
-                del sect_lens[0]
-                sect_lens.append(os.fstat(f.fileno()).st_size - sect_offs[-1])
+        with open(self.filename, "rb") as f:
+            self.buffer = io.BytesIO(f.read())
 
-                self.buffer.seek(self.head_len)
-                i = 0
-                for enc_str in self.buffer.read(self.idx_len).split(b"\x00"):
-                    if enc_str != b"":
-                        sect_name = enc_str.decode("utf-8")
-                        sect_dict = {"offset": sect_offs[i], "length": sect_lens[i]}
-                        self.subsections[sect_name] = sect_dict
-                        i += 1
+        sect_offs = []
+        sect_lens = []
+        for i in range(math.ceil(self.head_len / 12) - 1):
+            sect_len, _, sect_off = struct.unpack("<3i", self.buffer.read(12))
+            sect_lens.append(sect_len)
+            sect_offs.append(sect_off)
 
-            for k, v in self.subsections.items():
-                item = SectionItem(offset=v["offset"], length=v["length"])
-                item.setText(k)
-                self.section_list.addItem(item)
+        del sect_lens[0]
+        sect_lens.append(len(self.buffer.getvalue()) - sect_offs[-1])
+
+        self.buffer.seek(self.head_len)
+        i = 0
+        for enc_str in self.buffer.read(self.idx_len).split(b"\x00"):
+            if not enc_str:
+                continue
+
+            sect_name = enc_str.decode("utf-8")
+            sect_dict = {"offset": sect_offs[i], "length": sect_lens[i]}
+            self.subsections[sect_name] = sect_dict
+            i += 1
+
+        for k, v in self.subsections.items():
+            item = SectionItem(offset=v["offset"], length=v["length"])
+            item.setText(k)
+            self.section_list.addItem(item)
 
     def load_18_bin(self):
         self.get_filename()
@@ -219,35 +223,29 @@ class Editor(QMainWindow):
             self.module = importlib.import_module("pes_ai.eighteen.team")
             self.head_len = 200
             self.idx_len = 218
+
         if self.head_len != 0 and self.idx_len != 0:
             self.load_bin()
 
-    def save_changed_value(self, sect: SectionItem):
+    def save_section(self, sect: SectionItem):
         val_count = self.value_list.count()
-        if val_count not in [0, 1]:
-            self.buffer.seek(sect.offset)
-            for i in range(val_count):
-                val = self.value_list.itemWidget(self.value_list.item(i))
-                name = getattr(val, "name")
-                value = getattr(val, "value")
-                if "null" in name and value == 0:
-                    data = conv_to_bytes(None)
-                else:
-                    bool_list = getattr(self.module, "one_byte_bools")
-                    if isinstance(value, bool) and name not in bool_list:
-                        data = conv_to_bytes(int(value))
-                    else:
-                        data = conv_to_bytes(value)
-                self.buffer.write(data)
-
-    def save_bin(self):
-        if not self.subsections:
+        if val_count in [0, 1]:
             return
-        # noinspection PyTypeChecker
-        self.save_changed_value(self.section_list.currentItem())
-        with open(self.filename, "wb") as f:
-            self.buffer.seek(0)
-            f.write(self.buffer.read())
+
+        self.buffer.seek(sect.offset)
+        for i in range(val_count):
+            val = self.value_list.itemWidget(self.value_list.item(i))
+            name = getattr(val, "name")
+            value = getattr(val, "value")
+            if "null" in name and value == 0:
+                data = conv_to_bytes(None)
+            else:
+                bool_list = getattr(self.module, "one_byte_bools")
+                if isinstance(value, bool) and name not in bool_list:
+                    data = conv_to_bytes(int(value))
+                else:
+                    data = conv_to_bytes(value)
+            self.buffer.write(data)
 
     def save_section_json(self):
         if not self.subsections:
@@ -255,18 +253,29 @@ class Editor(QMainWindow):
 
         filters = "JSON file (*.json)"
         item = self.section_list.currentItem()
-        filename = f'{item.text()[:-2]}.json'
+        filename = f"{item.text()[:-2]}.json"
         f = QFileDialog.getSaveFileName(self, "JSON file", filename, filter=filters)
 
-        if f[0].replace(" ", "") != "":
-            val_count = self.value_list.count()
-            dict_out = {}
-            for i in range(val_count):
-                val = self.value_list.itemWidget(self.value_list.item(i))
-                dict_out[getattr(val, "name")] = getattr(val, "value")
+        if not f[0].replace(" ", ""):
+            return
 
-            with open(f[0], "w") as f:
-                json.dump({item.text(): dict_out}, f, indent=4)
+        val_count = self.value_list.count()
+        dict_out = {}
+        for i in range(val_count):
+            val = self.value_list.itemWidget(self.value_list.item(i))
+            dict_out[getattr(val, "name")] = getattr(val, "value")
+
+        with open(f[0], "w") as f:
+            json.dump({item.text(): dict_out}, f, indent=4)
+
+    def save_bin(self):
+        if not self.subsections:
+            return
+        # noinspection PyTypeChecker
+        self.save_section(self.section_list.currentItem())
+        with open(self.filename, "wb") as f:
+            self.buffer.seek(0)
+            f.write(self.buffer.read())
 
     def add_value_widget(self, name: str, value: float | int | bool, disabled=False):
         item = QListWidgetItem()
@@ -277,7 +286,7 @@ class Editor(QMainWindow):
 
     def load_section(self, curr: SectionItem | None, prev: SectionItem | None):
         if prev:
-            self.save_changed_value(prev)
+            self.save_section(prev)
         self.value_list.clear()
         if curr:
             try:
@@ -294,31 +303,35 @@ class Editor(QMainWindow):
 
         filters = "JSON file (*.json)"
         f = QFileDialog.getOpenFileName(self, "JSON file", filter=filters)
-        if f[0].replace(" ", "") != "":
-            with open(f[0], "r") as f:
-                data: dict = json.load(f)
+        if not f[0].replace(" ", ""):
+            return
 
-            if (sect_name := next(iter(data))) != self.section_list.currentItem().text():
-                item = self.section_list.findItems(sect_name, Qt.MatchFlag.MatchExactly)[0]
-                index = self.section_list.indexFromItem(item)
-                self.section_list.setCurrentIndex(index)
+        with open(f[0], "r") as f:
+            data: dict = json.load(f)
 
-            val_count = self.value_list.count()
-            for i in range(val_count):
-                val = self.value_list.itemWidget(self.value_list.item(i))
-                name = getattr(val, "name")
-                if name in data[sect_name]:
-                    if (value := data[sect_name][name]) == getattr(val, "value"):
-                        continue
+        if (sect_name := next(iter(data))) != self.section_list.currentItem().text():
+            item = self.section_list.findItems(sect_name, Qt.MatchFlag.MatchExactly)[0]
+            index = self.section_list.indexFromItem(item)
+            self.section_list.setCurrentIndex(index)
 
-                    setattr(val, "value", value)
-                    match type(value).__name__:
-                        case 'bool':
-                            getattr(val, "ui_value").setChecked(value)
-                        case 'NoneType':
-                            getattr(val, "ui_value").setValue(0)
-                        case _:
-                            getattr(val, "ui_value").setValue(value)
+        val_count = self.value_list.count()
+        for i in range(val_count):
+            val = self.value_list.itemWidget(self.value_list.item(i))
+            name = getattr(val, "name")
+
+            if name not in data[sect_name]:
+                continue
+            if (value := data[sect_name][name]) == getattr(val, "value"):
+                continue
+
+            setattr(val, "value", value)
+            match type(value).__name__:
+                case "bool":
+                    getattr(val, "ui_value").setChecked(value)
+                case "NoneType":
+                    getattr(val, "ui_value").setValue(0)
+                case _:
+                    getattr(val, "ui_value").setValue(value)
 
 
 if __name__ == "__main__":
