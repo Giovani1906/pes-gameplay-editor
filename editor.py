@@ -1,5 +1,6 @@
 import importlib
 import io
+import json
 import math
 import os
 import struct
@@ -93,16 +94,20 @@ class ValueWidget(QWidget):
 class Editor(QMainWindow):
     def __init__(self, parent=None):
         super().__init__(parent)
-        self.setObjectName("Editor")
+        self.setObjectName("editor")
         self.resize(1280, 720)
         self.setMinimumSize(QSize(1280, 720))
         self.setMaximumSize(QSize(1280, 720))
         self.act_load_18 = QAction()
         self.act_load_18.setObjectName("act_load_18")
+        self.act_load_sect = QAction()
+        self.act_load_sect.setObjectName("act_load_sect")
         self.act_save = QAction()
         self.act_save.setObjectName("act_save")
         self.act_save_as = QAction()
         self.act_save_as.setObjectName("act_save_as")
+        self.act_save_sect = QAction()
+        self.act_save_sect.setObjectName("act_save_sect")
         self.central_widget = QWidget()
         self.central_widget.setObjectName("central_widget")
         self.section_list = QListWidget(self.central_widget)
@@ -132,15 +137,21 @@ class Editor(QMainWindow):
         self.menu_bar.addAction(self.menu_load.menuAction())
         self.menu_bar.addAction(self.menu_save.menuAction())
         self.menu_load.addAction(self.act_load_18)
+        self.menu_load.addSeparator()
+        self.menu_load.addAction(self.act_load_sect)
         self.menu_save.addAction(self.act_save)
         self.menu_save.addAction(self.act_save_as)
+        self.menu_save.addSeparator()
+        self.menu_save.addAction(self.act_save_sect)
 
         self.re_translate_ui()
 
         QMetaObject.connectSlotsByName(self)
 
         self.act_load_18.triggered.connect(self.load_18_bin)
+        self.act_load_sect.triggered.connect(self.load_section_json)
         self.act_save.triggered.connect(self.save_bin)
+        self.act_save_sect.triggered.connect(self.save_section_json)
         self.section_list.currentItemChanged.connect(self.load_section)
 
         self.buffer: io.BytesIO | None = None
@@ -151,21 +162,27 @@ class Editor(QMainWindow):
         self.subsections: dict = {}
 
     def re_translate_ui(self):
-        window_title = QCoreApplication.translate("Editor", "PES Gameplay Editor", None)
+        window_title = QCoreApplication.translate("editor", "PES Gameplay Editor", None)
         self.setWindowTitle(window_title)
-        load_18_text = QCoreApplication.translate("Editor", "Load 18 files", None)
+        load_18_text = QCoreApplication.translate("editor", "Load 18 Files", None)
         self.act_load_18.setText(load_18_text)
-        save_text = QCoreApplication.translate("Editor", "Save", None)
+        load_sect_text = QCoreApplication.translate("editor", "Load Section...", None)
+        self.act_load_sect.setText(load_sect_text)
+        save_text = QCoreApplication.translate("editor", "Save", None)
         self.act_save.setText(save_text)
-        save_as_text = QCoreApplication.translate("Editor", "Save As...", None)
+        save_as_text = QCoreApplication.translate("editor", "Save As...", None)
         self.act_save_as.setText(save_as_text)
-        menu_load_title = QCoreApplication.translate("Editor", "Load", None)
+        save_sect_text = QCoreApplication.translate("editor", "Save Section...", None)
+        self.act_save_sect.setText(save_sect_text)
+        menu_load_title = QCoreApplication.translate("editor", "Load", None)
         self.menu_load.setTitle(menu_load_title)
-        menu_save_title = QCoreApplication.translate("Editor", "Save", None)
+        menu_save_title = QCoreApplication.translate("editor", "Save", None)
         self.menu_save.setTitle(menu_save_title)
 
     def get_filename(self):
-        self.filename = QFileDialog.getOpenFileName(self, "CPK File")[0]
+        filters = "Bin file (*.bin);;CPK file (*.cpk)"
+        f = QFileDialog.getOpenFileName(self, "CPK file", filter=filters)
+        self.filename = f[0]
 
     def load_bin(self):
         self.section_list.clear()
@@ -207,7 +224,7 @@ class Editor(QMainWindow):
 
     def save_changed_value(self, sect: SectionItem):
         val_count = self.value_list.count()
-        if val_count != 1:
+        if val_count not in [0, 1]:
             self.buffer.seek(sect.offset)
             for i in range(val_count):
                 val = self.value_list.itemWidget(self.value_list.item(i))
@@ -224,11 +241,32 @@ class Editor(QMainWindow):
                 self.buffer.write(data)
 
     def save_bin(self):
+        if not self.subsections:
+            return
         # noinspection PyTypeChecker
         self.save_changed_value(self.section_list.currentItem())
         with open(self.filename, "wb") as f:
             self.buffer.seek(0)
             f.write(self.buffer.read())
+
+    def save_section_json(self):
+        if not self.subsections:
+            return
+
+        filters = "JSON file (*.json)"
+        item = self.section_list.currentItem()
+        filename = f'{item.text()[:-2]}.json'
+        f = QFileDialog.getSaveFileName(self, "JSON file", filename, filter=filters)
+
+        if f[0].replace(" ", "") != "":
+            val_count = self.value_list.count()
+            dict_out = {}
+            for i in range(val_count):
+                val = self.value_list.itemWidget(self.value_list.item(i))
+                dict_out[getattr(val, "name")] = getattr(val, "value")
+
+            with open(f[0], "w") as f:
+                json.dump({item.text(): dict_out}, f, indent=4)
 
     def add_value_widget(self, name: str, value: float | int | bool, disabled=False):
         item = QListWidgetItem()
@@ -249,6 +287,38 @@ class Editor(QMainWindow):
                     self.add_value_widget(k, v)
             except AttributeError:
                 self.add_value_widget(str(curr.length), curr.offset, True)
+
+    def load_section_json(self):
+        if not self.subsections:
+            return
+
+        filters = "JSON file (*.json)"
+        f = QFileDialog.getOpenFileName(self, "JSON file", filter=filters)
+        if f[0].replace(" ", "") != "":
+            with open(f[0], "r") as f:
+                data: dict = json.load(f)
+
+            if (sect_name := next(iter(data))) != self.section_list.currentItem().text():
+                item = self.section_list.findItems(sect_name, Qt.MatchFlag.MatchExactly)[0]
+                index = self.section_list.indexFromItem(item)
+                self.section_list.setCurrentIndex(index)
+
+            val_count = self.value_list.count()
+            for i in range(val_count):
+                val = self.value_list.itemWidget(self.value_list.item(i))
+                name = getattr(val, "name")
+                if name in data[sect_name]:
+                    if (value := data[sect_name][name]) == getattr(val, "value"):
+                        continue
+
+                    setattr(val, "value", value)
+                    match type(value).__name__:
+                        case 'bool':
+                            getattr(val, "ui_value").setChecked(value)
+                        case 'NoneType':
+                            getattr(val, "ui_value").setValue(0)
+                        case _:
+                            getattr(val, "ui_value").setValue(value)
 
 
 if __name__ == "__main__":
