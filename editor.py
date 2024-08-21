@@ -296,7 +296,8 @@ class Editor(QMainWindow):
                 func = getattr(self.module, f"map_{curr.text()[:-2]}")
                 vals = func(self.buffer, curr.offset, curr.length)
                 for k, v in vals.items():
-                    self.add_value_widget(k, v)
+                    disabled = True if "padding" in k else False
+                    self.add_value_widget(k, v, disabled)
             except AttributeError:
                 self.add_value_widget(str(curr.length), curr.offset, True)
 
