@@ -1,4 +1,4 @@
-import io
+from io import BytesIO
 from struct import unpack
 
 from pes_ai.utils import conv_from_bytes
@@ -28,28 +28,29 @@ one_byte_bools = [
 
 
 def map_basePosition(
-    data: io.BytesIO, offset: int, length: int
+    data: BytesIO, offset: int, length: int
 ) -> dict[str, float | int | bool | None]:
     vals = []
     data.seek(offset)
     for i in range(int(length / 4)):
         match i:
-            # adjustGapDfLineAction
-            # adjustSetplay
-            # adjustSlideMoveSpeed
-            # changeDefenceNumberFromSituation
-            # dfAttackWidthForce
-            # dfUserPositionAdjustEnable
-            # isUseDashSituation
-            # numericalRelationDefenceLine
-            # offenceZposiAdjust
-            # onPassCourse
-            # returnControlSide
-            # slide
-            # slowDownFw
-            # teamToGroupAdjustEnable
-            # xposiRateCustom
-            case 15 | 18 | 21 | 42 | 71 | 90 | 128 | 163 | 166 | 168 | 177 | 184 | 193 | 203 | 215:
+            case (
+                15  # adjustGapDfLineAction
+                | 18  # adjustSetplay
+                | 21  # adjustSlideMoveSpeed
+                | 42  # changeDefenceNumberFromSituation
+                | 71  # dfAttackWidthForce
+                | 90  # dfUserPositionAdjustEnable
+                | 128  # isUseDashSituation
+                | 163  # numericalRelationDefenceLine
+                | 166  # offenceZposiAdjust
+                | 168  # onPassCourse
+                | 177  # returnControlSide
+                | 184  # slide
+                | 193  # slowDownFw
+                | 203  # teamToGroupAdjustEnable
+                | 215  # xposiRateCustom
+            ):
                 vals += [bool(unpack("<i", data.read(4))[0])]
             # defenceFormationTest1
             # defenceFormationTest2
@@ -68,9 +69,7 @@ def map_basePosition(
         return dict(zip(f.read().split("\n"), vals))
 
 
-def map_centeringGet(
-    data: io.BytesIO, offset: int, length: int
-) -> dict[str, int]:
+def map_centeringGet(data: BytesIO, offset: int, length: int) -> dict[str, int]:
     vals = []
     data.seek(offset)
     for i in range(int(length / 4)):
@@ -80,9 +79,7 @@ def map_centeringGet(
         return dict(zip(f.read().split("\n"), vals))
 
 
-def map_defence(
-    data: io.BytesIO, offset: int, length: int
-) -> dict[str, float | int]:
+def map_defence(data: BytesIO, offset: int, length: int) -> dict[str, float | int]:
     vals = []
     data.seek(offset)
     for i in range(int(length / 4)):
@@ -93,7 +90,7 @@ def map_defence(
 
 
 def map_defenceCover(
-    data: io.BytesIO, offset: int, length: int
+    data: BytesIO, offset: int, length: int
 ) -> dict[str, float | int | bool]:
     vals = []
     data.seek(offset)
@@ -110,7 +107,7 @@ def map_defenceCover(
 
 
 def map_defenceMark(
-    data: io.BytesIO, offset: int, length: int
+    data: BytesIO, offset: int, length: int
 ) -> dict[str, float | int | bool]:
     vals = []
     data.seek(offset)
@@ -126,9 +123,7 @@ def map_defenceMark(
         return dict(zip(f.read().split("\n"), vals))
 
 
-def map_diagonalRun(
-    data: io.BytesIO, offset: int, length: int
-) -> dict[str, float | int]:
+def map_diagonalRun(data: BytesIO, offset: int, length: int) -> dict[str, float | int]:
     vals = []
     data.seek(offset)
     for i in range(int(length / 4)):
@@ -138,9 +133,7 @@ def map_diagonalRun(
         return dict(zip(f.read().split("\n"), vals))
 
 
-def map_lineBreak(
-    data: io.BytesIO, offset: int, length: int
-) -> dict[str, float | int]:
+def map_lineBreak(data: BytesIO, offset: int, length: int) -> dict[str, float | int]:
     vals = []
     data.seek(offset)
     for i in range(int(length / 4)):
@@ -150,9 +143,7 @@ def map_lineBreak(
         return dict(zip(f.read().split("\n"), vals))
 
 
-def map_overlap(
-    data: io.BytesIO, offset: int, length: int
-) -> dict[str, float | int]:
+def map_overlap(data: BytesIO, offset: int, length: int) -> dict[str, float | int]:
     vals = []
     data.seek(offset)
     for i in range(int(length / 4)):
@@ -163,7 +154,7 @@ def map_overlap(
 
 
 def map_pullAway(
-    data: io.BytesIO, offset: int, length: int
+    data: BytesIO, offset: int, length: int
 ) -> dict[str, int | float | bool | None]:
     vals = []
     data.seek(offset)
@@ -186,7 +177,7 @@ def map_pullAway(
 
 
 def map_spaceRun(
-    data: io.BytesIO, offset: int, length: int
+    data: BytesIO, offset: int, length: int
 ) -> dict[str, int | float | bool]:
     vals = []
     data.seek(offset)
@@ -211,23 +202,14 @@ def map_spaceRun(
 
 
 def map_subConcept(
-    data: io.BytesIO, offset: int, length: int
+    data: BytesIO, offset: int, length: int
 ) -> dict[str, float | int | bool | None]:
     vals = []
-    data.seek(offset)
+    data.seek(offset + 16)
     for i in range(int(length / 4)):
         match i:
-            # subConcept
-            # padding
-            # padding
-            case 0 | 1 | 51:
-                vals += [conv_from_bytes(data.read(4))]
-            # subConcept_passRequest_all_off
-            # subConcept_passRequest_off
-            case 50:
+            case 46:
                 vals += list(unpack("2?", data.read(2)))
-                data.seek(data.tell() + 2)
-                vals += [None]*2
             case _:
                 vals += [bool(unpack("<i", data.read(4))[0])]
 
@@ -235,9 +217,7 @@ def map_subConcept(
         return dict(zip(f.read().split("\n"), vals))
 
 
-def map_support(
-    data: io.BytesIO, offset: int, length: int
-) -> dict[str, float | int]:
+def map_support(data: BytesIO, offset: int, length: int) -> dict[str, float | int]:
     vals = []
     data.seek(offset)
     for i in range(int(length / 4)):

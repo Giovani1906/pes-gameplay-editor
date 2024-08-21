@@ -15,6 +15,7 @@ from PySide6.QtWidgets import (
     QDoubleSpinBox,
     QFileDialog,
     QHBoxLayout,
+    QInputDialog,
     QLabel,
     QListView,
     QListWidget,
@@ -42,9 +43,9 @@ class ValueWidget(QWidget):
         self.name = name
         self.value = value
 
-        self.resize(512, 64)
-        self.setMinimumSize(QSize(512, 64))
-        self.setMaximumSize(QSize(512, 64))
+        self.resize(448, 48)
+        self.setMinimumSize(QSize(448, 48))
+        self.setMaximumSize(QSize(448, 48))
 
         self.ui_name = QLabel()
         self.ui_name.setText(self.name)
@@ -94,47 +95,52 @@ class Editor(QMainWindow):
     def __init__(self, parent=None):
         super().__init__(parent)
         self.setObjectName("editor")
-        self.resize(1280, 720)
-        self.setMinimumSize(QSize(1280, 720))
-        self.setMaximumSize(QSize(1280, 720))
-        self.act_load_18 = QAction()
+        self.resize(1150, 720)
+        self.setMinimumSize(QSize(1150, 720))
+        self.setMaximumSize(QSize(1150, 720))
+        self.act_load_18 = QAction(self)
         self.act_load_18.setObjectName("act_load_18")
-        self.act_load_sect = QAction()
+        self.act_load_sect = QAction(self)
         self.act_load_sect.setObjectName("act_load_sect")
-        self.act_save = QAction()
+        self.act_save = QAction(self)
         self.act_save.setObjectName("act_save")
-        self.act_save_as = QAction()
+        self.act_save_as = QAction(self)
         self.act_save_as.setObjectName("act_save_as")
-        self.act_save_sect = QAction()
+        self.act_save_sect = QAction(self)
         self.act_save_sect.setObjectName("act_save_sect")
-        self.central_widget = QWidget()
+        self.act_find = QAction(self)
+        self.act_find.setObjectName("act_find")
+        self.central_widget = QWidget(self)
         self.central_widget.setObjectName("central_widget")
         self.section_list = QListWidget(self.central_widget)
         self.section_list.setObjectName("section_list")
         self.section_list.setGeometry(QRect(10, 45, 200, 640))
         self.value_list = QListWidget(self.central_widget)
         self.value_list.setObjectName("value_list")
-        self.value_list.setGeometry(QRect(220, 10, 1050, 675))
+        self.value_list.setGeometry(QRect(220, 10, 920, 675))
         self.value_list.setFocusPolicy(Qt.FocusPolicy.NoFocus)
         self.value_list.setSelectionMode(QAbstractItemView.SelectionMode.NoSelection)
         self.value_list.setFlow(QListView.Flow.LeftToRight)
         self.value_list.setProperty("isWrapping", True)
-        self.value_list.setGridSize(QSize(512, 64))
+        self.value_list.setGridSize(QSize(448, 48))
         self.file_list = QComboBox(self.central_widget)
         self.file_list.setObjectName("file_list")
         self.file_list.setGeometry(QRect(10, 10, 200, 25))
         self.setCentralWidget(self.central_widget)
-        self.menu_bar = QMenuBar()
+        self.menu_bar = QMenuBar(self)
         self.menu_bar.setObjectName("menu_bar")
         self.menu_bar.setGeometry(QRect(0, 0, 1280, 22))
         self.menu_load = QMenu(self.menu_bar)
         self.menu_load.setObjectName("menu_load")
         self.menu_save = QMenu(self.menu_bar)
         self.menu_save.setObjectName("menu_save")
+        self.menu_search = QMenu(self.menu_bar)
+        self.menu_search.setObjectName("menu_search")
         self.setMenuBar(self.menu_bar)
 
         self.menu_bar.addAction(self.menu_load.menuAction())
         self.menu_bar.addAction(self.menu_save.menuAction())
+        self.menu_bar.addAction(self.menu_search.menuAction())
         self.menu_load.addAction(self.act_load_18)
         self.menu_load.addSeparator()
         self.menu_load.addAction(self.act_load_sect)
@@ -142,6 +148,7 @@ class Editor(QMainWindow):
         self.menu_save.addAction(self.act_save_as)
         self.menu_save.addSeparator()
         self.menu_save.addAction(self.act_save_sect)
+        self.menu_search.addAction(self.act_find)
 
         self.re_translate_ui()
 
@@ -151,6 +158,7 @@ class Editor(QMainWindow):
         self.act_load_sect.triggered.connect(self.load_section_json)
         self.act_save.triggered.connect(self.save_bin)
         self.act_save_sect.triggered.connect(self.save_section_json)
+        self.act_find.triggered.connect(self.find_value)
         self.section_list.currentItemChanged.connect(self.load_section)
 
         self.buffer: io.BytesIO | None = None
@@ -163,20 +171,36 @@ class Editor(QMainWindow):
     def re_translate_ui(self):
         window_title = QCoreApplication.translate("editor", "PES Gameplay Editor", None)
         self.setWindowTitle(window_title)
-        load_18_text = QCoreApplication.translate("editor", "Load 18 Files", None)
-        self.act_load_18.setText(load_18_text)
-        load_sect_text = QCoreApplication.translate("editor", "Load Section...", None)
-        self.act_load_sect.setText(load_sect_text)
-        save_text = QCoreApplication.translate("editor", "Save", None)
-        self.act_save.setText(save_text)
-        save_as_text = QCoreApplication.translate("editor", "Save As...", None)
-        self.act_save_as.setText(save_as_text)
-        save_sect_text = QCoreApplication.translate("editor", "Save Section...", None)
-        self.act_save_sect.setText(save_sect_text)
+        load_18_txt = QCoreApplication.translate("editor", "Load 18 Files", None)
+        load_18_short = QCoreApplication.translate("editor", "Ctrl+8", None)
+        self.act_load_18.setText(load_18_txt)
+        self.act_load_18.setShortcut(load_18_short)
+        load_sect_txt = QCoreApplication.translate("editor", "Load Section...", None)
+        load_sect_short = QCoreApplication.translate("editor", "Ctrl+Shift+L", None)
+        self.act_load_sect.setText(load_sect_txt)
+        self.act_load_sect.setShortcut(load_sect_short)
+        save_txt = QCoreApplication.translate("editor", "Save", None)
+        save_short = QCoreApplication.translate("editor", "Ctrl+S", None)
+        self.act_save.setText(save_txt)
+        self.act_save.setShortcut(save_short)
+        save_as_txt = QCoreApplication.translate("editor", "Save As...", None)
+        save_as_short = QCoreApplication.translate("editor", "Ctrl+Alt+S", None)
+        self.act_save_as.setText(save_as_txt)
+        self.act_save_as.setShortcut(save_as_short)
+        save_sect_txt = QCoreApplication.translate("editor", "Save Section...", None)
+        save_sect_short = QCoreApplication.translate("editor", "Ctrl+Shift+S", None)
+        self.act_save_sect.setText(save_sect_txt)
+        self.act_save_sect.setShortcut(save_sect_short)
+        find_txt = QCoreApplication.translate("editor", "Find", None)
+        find_short = QCoreApplication.translate("editor", "Ctrl+F", None)
+        self.act_find.setText(find_txt)
+        self.act_find.setShortcut(find_short)
         menu_load_title = QCoreApplication.translate("editor", "Load", None)
         self.menu_load.setTitle(menu_load_title)
         menu_save_title = QCoreApplication.translate("editor", "Save", None)
         self.menu_save.setTitle(menu_save_title)
+        menu_search_title = QCoreApplication.translate("editor", "Search", None)
+        self.menu_search.setTitle(menu_search_title)
 
     def get_filename(self):
         filters = "Bin file (*.bin);;CPK file (*.cpk)"
@@ -232,7 +256,8 @@ class Editor(QMainWindow):
         if val_count in [0, 1]:
             return
 
-        self.buffer.seek(sect.offset)
+        sub_chk = 16 if sect.text()[:-2] == "subConcept" else 0
+        self.buffer.seek(sect.offset + sub_chk)
         for i in range(val_count):
             val = self.value_list.itemWidget(self.value_list.item(i))
             name = getattr(val, "name")
@@ -339,6 +364,22 @@ class Editor(QMainWindow):
                     getattr(val, "ui_value").setValue(0)
                 case _:
                     getattr(val, "ui_value").setValue(value)
+
+    def find_value(self):
+        if not self.subsections:
+            return
+
+        text, ok = QInputDialog.getText(self, "Find", "Find what:")
+        if not text.replace(" ", "") and not ok:
+            return
+
+        val_count = self.value_list.count()
+        for i in range(val_count):
+            widget = self.value_list.itemWidget(self.value_list.item(i))
+            if text.lower() in getattr(widget, "name").lower():
+                self.value_list.setCurrentRow(i)
+                getattr(widget, "ui_name").setStyleSheet("font-weight: bold")
+                break
 
 
 if __name__ == "__main__":

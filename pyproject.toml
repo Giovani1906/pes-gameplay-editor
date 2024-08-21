@@ -1,0 +1,16 @@
+[project]
+name = "pes-gameplay-editor"
+requires-python = ">= 3.10"
+dependencies = ["PySide6>=6.7.2"]
+readme = "README.md"
+license = {text = "GPLv3"}
+
+[tool.ruff]
+target-version = "py310"
+
+[tool.ruff.lint.pep8-naming]
+extend-ignore-names = ["map_*"]
+
+[tool.isort]
+profile = "black"
+known_first_party = "pes_ai"
