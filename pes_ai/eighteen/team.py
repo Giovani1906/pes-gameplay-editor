@@ -70,13 +70,9 @@ def map_basePosition(
 
 
 def map_centeringGet(data: BytesIO, offset: int, length: int) -> dict[str, int]:
-    vals = []
     data.seek(offset)
-    for i in range(int(length / 4)):
-        vals += [conv_from_bytes(data.read(4))]
-
     with open("pes_ai/mappings/18/team/centeringGet.txt", "r") as f:
-        return dict(zip(f.read().split("\n"), vals))
+        return dict(zip(f.read().split("\n"), [unpack("<i", data.read(4))[0]]))
 
 
 def map_defence(data: BytesIO, offset: int, length: int) -> dict[str, float | int]:

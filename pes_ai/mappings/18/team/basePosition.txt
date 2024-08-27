@@ -65,7 +65,7 @@ defenceCompact
 defenceFormationTest1
 defenceFormationTest2
 dfAdjustZ
-null
+null0
 dfAdjustZCheckLenMax
 dfAdjustZCheckLenMin
 dfAdjustZCheckWidthMax
@@ -79,7 +79,7 @@ dfAttackWidthMarginFront
 dfCoverAdjustX
 dfCoverEnable
 dfForceAverageZ
-null
+null1
 dfGroupRate
 dfLine
 dfLineAdjustMax

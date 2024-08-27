@@ -1,0 +1,4 @@
+dist
+distWide
+suspendTime
+waitTime

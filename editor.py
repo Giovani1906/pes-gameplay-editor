@@ -243,6 +243,14 @@ class Editor(QMainWindow):
 
     def load_18_bin(self):
         self.get_filename()
+        if "constant_match" in self.filename:
+            self.module = importlib.import_module("pes_ai.eighteen.match")
+            self.head_len = 296
+            self.idx_len = 392
+        if "constant_player" in self.filename:
+            self.module = importlib.import_module("pes_ai.eighteen.player")
+            self.head_len = 440
+            self.idx_len = 456
         if "constant_team" in self.filename:
             self.module = importlib.import_module("pes_ai.eighteen.team")
             self.head_len = 200
@@ -252,8 +260,7 @@ class Editor(QMainWindow):
             self.load_bin()
 
     def save_section(self, sect: SectionItem):
-        val_count = self.value_list.count()
-        if val_count in [0, 1]:
+        if (val_count := self.value_list.count()) in [0, 1]:
             return
 
         sub_chk = 16 if sect.text()[:-2] == "subConcept" else 0
@@ -276,13 +283,12 @@ class Editor(QMainWindow):
         if not self.subsections:
             return
 
-        val_count = self.value_list.count()
-        if val_count in [0, 1]:
+        if (val_count := self.value_list.count()) in [0, 1]:
             return
 
-        filters = "JSON file (*.json)"
         item = self.section_list.currentItem()
         filename = f"{item.text()[:-2]}.json"
+        filters = "JSON file (*.json)"
         f = QFileDialog.getSaveFileName(self, "JSON file", filename, filter=filters)
 
         if not f[0].replace(" ", ""):
@@ -343,15 +349,12 @@ class Editor(QMainWindow):
             index = self.section_list.indexFromItem(item)
             self.section_list.setCurrentIndex(index)
 
-        val_count = self.value_list.count()
-        if val_count in [0, 1]:
+        if (val_count := self.value_list.count()) in [0, 1]:
             return
 
         for i in range(val_count):
             val = self.value_list.itemWidget(self.value_list.item(i))
-            name = getattr(val, "name")
-
-            if name not in data[sect_name]:
+            if (name := getattr(val, "name")) not in data[sect_name]:
                 continue
             if (value := data[sect_name][name]) == getattr(val, "value"):
                 continue

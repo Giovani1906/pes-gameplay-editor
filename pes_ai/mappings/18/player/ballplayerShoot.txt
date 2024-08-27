@@ -1,0 +1,6 @@
+rangeAngleGoalFront
+rangeAngleMax
+rangeDistForce
+rangeDistHedding
+rangeDistMiddle
+rangeDistShort

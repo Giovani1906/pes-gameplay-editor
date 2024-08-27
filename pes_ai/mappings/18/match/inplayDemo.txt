@@ -1,0 +1,9 @@
+BlendTime
+addPenaltyX
+addPenaltyZ
+connectLimit
+isHard
+onoff
+null0
+null1
+targetAngleType

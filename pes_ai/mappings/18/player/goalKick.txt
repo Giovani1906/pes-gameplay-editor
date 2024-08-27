@@ -1,0 +1,8 @@
+angleBase
+angleDelta
+distManualBase
+distManualDelta
+distMaxBase
+distMaxDelta
+distMinBase
+distMinDelta

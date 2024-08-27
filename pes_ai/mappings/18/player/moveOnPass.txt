@@ -1,0 +1,5 @@
+adjustWaitFrame
+baseWaitFrame
+continueFrame
+distMax
+distMin

@@ -1,0 +1,12 @@
+adjustHardPressAngle
+adjustHardPressDist
+checkAngle_bodyAngle
+checkAngle_pressPoint0
+checkAngle_pressPoint1
+checkAngle_pressPoint2
+checkAngle_target
+checkContinueAngle
+delayAutoClose
+pressContinueDist
+pressDist
+pressOneSideCutDist
