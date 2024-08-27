@@ -208,7 +208,6 @@ class Editor(QMainWindow):
         self.filename = f[0]
 
     def load_bin(self):
-        self.section_list.clear()
         if not self.filename.replace(" ", ""):
             return
 
@@ -227,6 +226,7 @@ class Editor(QMainWindow):
 
         self.buffer.seek(self.head_len)
         i = 0
+        self.subsections.clear()
         for enc_str in self.buffer.read(self.idx_len).split(b"\x00"):
             if not enc_str:
                 continue
@@ -236,6 +236,7 @@ class Editor(QMainWindow):
             self.subsections[sect_name] = sect_dict
             i += 1
 
+        self.section_list.clear()
         for k, v in self.subsections.items():
             item = SectionItem(offset=v["offset"], length=v["length"])
             item.setText(k)
@@ -261,6 +262,8 @@ class Editor(QMainWindow):
 
     def save_section(self, sect: SectionItem):
         if (val_count := self.value_list.count()) in [0, 1]:
+            return
+        if not getattr(sect, "offset", None):
             return
 
         sub_chk = 16 if sect.text()[:-2] == "subConcept" else 0
@@ -321,16 +324,18 @@ class Editor(QMainWindow):
     def load_section(self, curr: SectionItem | None, prev: SectionItem | None):
         if prev:
             self.save_section(prev)
+
         self.value_list.clear()
-        if curr:
-            try:
-                func = getattr(self.module, f"map_{curr.text()[:-2]}")
-                vals = func(self.buffer, curr.offset, curr.length)
-                for k, v in vals.items():
-                    disabled = True if "padding" in k else False
-                    self.add_value_widget(k, v, disabled)
-            except AttributeError:
-                self.add_value_widget(str(curr.length), curr.offset, True)
+
+        if not curr:
+            return
+        if not (func := getattr(self.module, f"map_{curr.text()[:-2]}", None)):
+            return self.add_value_widget(str(curr.length), curr.offset, True)
+
+        vals = func(self.buffer, curr.offset, curr.length)
+        for k, v in vals.items():
+            disabled = True if "padding" in k else False
+            self.add_value_widget(k, v, disabled)
 
     def load_section_json(self):
         if not self.subsections:
